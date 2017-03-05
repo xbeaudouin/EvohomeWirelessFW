@@ -458,9 +458,9 @@ void loop() {
                if(param[0]!='-')
                {
                  out_flags|=1<<(sp-2);
-                 byte idType;
+                 uint8_t idType;
                  uint32_t idAddr;
-                 sscanf(param,"%02hu:%06lu",&idType,&idAddr);
+                 sscanf(param,"%02hhu:%06lu",&idType,&idAddr);
                  if(idType==18 && idAddr==730)
                    idAddr=GW_ID;
                  else
