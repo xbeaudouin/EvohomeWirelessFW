@@ -114,6 +114,7 @@ byte *pDev=(byte*)&devid;
 uint16_t cmd;
 char tmp[10];
 byte len;
+byte pos=3;
 char param[10];
 
 // Interrupt to receive data and find_sync_word
@@ -315,6 +316,7 @@ void loop() {
         pm=pmPacketStart;
         check=0;
         pkt_pos=0;
+        pos=3;
       }
       else if(in==0x35)
       {
@@ -353,41 +355,55 @@ void loop() {
         Serial.print("--- ");//parameter not supported... not been observed yet
         pDev=(byte*)&devid+2; //platform specific
       }
-      else if(pkt_pos<=6)//ids we only support 2 atm (1,2 or 3 ids are valid)
+      else if(pkt_pos<=pos)//ids, support 1 or 2 atm (1,2 or 3 ids are valid)
       {
         *pDev--=in;//platform specific
-        if(pkt_pos==3 || pkt_pos==6)
+        if(pkt_pos==3)
         {
+          if(!(in_flags&enDev0) && !(in_flags&enDev1))    
+            Serial.print("--:------ --:------ ");
+          else    
+            pos += 3;
           sprintf(tmp,"%02hu:%06lu ",(uint8_t)(devid>>18)&0x3F,devid&0x3FFFF);
           Serial.print(tmp);
           pDev=(byte*)&devid+2;//platform specific
-          if((pkt_pos==3 && !(in_flags&enDev1)) || (pkt_pos==6 && in_flags&enDev1)) //only support 2 ids atm (1,2 or 3 ids are valid)
-            Serial.print("--:------ ");
+        }
+        else if(pkt_pos==6)
+        {  
+          if(!(in_flags&enDev1))
+            Serial.print("--:------ "); 
+          sprintf(tmp,"%02hu:%06lu ",(uint8_t)(devid>>18)&0x3F,devid&0x3FFFF);
+          Serial.print(tmp);
+          if(!(in_flags&enDev2))
+            Serial.print("--:------ "); 
+          pDev=(byte*)&devid+2;//platform specific
         }
       }
-      else if(pkt_pos<=8)//command
+      else if(pkt_pos<=pos+2)//command
       {
-        if(pkt_pos==7)
+         if(pkt_pos == 4) //Skip the value
+          pos++;
+        else if(pkt_pos==pos+1)
           cmd=in<<8;
-        else
+        else if(pkt_pos==pos+2)
         {
           cmd|=in;
           sprintf(tmp,"%04X ",cmd);
           Serial.print(tmp);
         }
       }
-      else if(pkt_pos==9)//len
+      else if(pkt_pos==pos+3)//len
       {
         len=in;
         sprintf(tmp,"%03hu ",len);
         Serial.print(tmp);
       }
-      else if(pkt_pos<=9+len)//payload
+      else if(pkt_pos<=pos+3+len)//payload
       {
         sprintf(tmp,"%02hX",in);
         Serial.print(tmp);
       }
-      else if(pkt_pos==10+len)//checksum
+      else if(pkt_pos==pos+4+len)//checksum
       {
         if(check==0)
           Serial.println();
