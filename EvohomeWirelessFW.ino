@@ -116,6 +116,7 @@ char tmp[10];
 uint8_t len;
 uint8_t pos=3;
 char param[10];
+char rawmsg[256];
 
 // Interrupt to receive data and find_sync_word
 void sync_clk_in() {
@@ -280,8 +281,8 @@ void setup() {
   // Data is received at 38k4 (packet bytes only at 19k2 due to manchster encoding)
   // 115k2 provides enough speed to perform processing and write the received
   // bytes to serial
-  //Serial.begin(115200);
-  Serial.begin(250000);
+  Serial.begin(115200);
+  //Serial.begin(250000);
 
   Serial.println(F("# EvohomeWirelessFW v" VERSION_NO " Copyright (c) 2015 Hydrogenetic"));
   Serial.println(F("# Licensed under GPL-3.0+ <http://spdx.org/licenses/GPL-3.0+>"));
@@ -322,12 +323,15 @@ void loop() {
         check=0;
         pkt_pos=0;
         pos=3;
+        rawmsg[0]=0;
       }
       else if(in==0x35)
       {
         if(pm==pmNewPacket)
           Serial.println(F("\x11*INCOMPLETE*"));
         pm=pmIdle;
+        sprintf(rawmsg, "%s-%02hX-",rawmsg,in);
+        Serial.println(rawmsg);
       }
     }
     else if(pm>pmIdle)
@@ -358,6 +362,7 @@ void loop() {
         {
           Serial.print(F("\x11Unknown header=0x")); 
           Serial.println(in,HEX);
+          sprintf(rawmsg, "%s-%02hX",rawmsg,in);
           pm=pmIdle;
           return;
         }
@@ -418,17 +423,20 @@ void loop() {
           Serial.println();
         else
           Serial.println(F("\x11*CHK*"));
+        sprintf(rawmsg, "%s-%02hX",rawmsg,in);
         pm=pmIdle;
         return;
       }
       else
       {
         Serial.println(F("\x11*E-DATA*"));
+        sprintf(rawmsg, "%s-%02hX",rawmsg,in);
         pm=pmIdle;
         return;
       }
       pkt_pos++;
     }
+    sprintf(rawmsg, "%s-%02hX",rawmsg,in);
   }
   else if(sm<pmSendReady)
   {
