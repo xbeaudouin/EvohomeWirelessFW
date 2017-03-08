@@ -41,7 +41,7 @@
 #define GDO2_PD 8 // PD3(INT1) wired to GDO2 on CC1101
 
 #define SYNC_WORD     (uint16_t)0x5595//This is the last 2 bytes of the preamble / sync words..on its own it can be confused with the end of block when the last bit of the checksum is 0 (the following 0x55 pattern is then converted to 0xFF)
-#define GW_ID         0x48DADA //This should ideally be unique for every device and some addresses may not be valid
+#define GW_ID         0x480B2B //This should ideally be unique for every device and some addresses may not be valid
 
 enum progMode{
   pmIdle,
@@ -64,62 +64,62 @@ enum enflags{
   enW=enI<<1,  
 };
 
-const byte manc_enc[16]={0xAA,0xA9,0xA6,0xA5,0x9A,0x99,0x96,0x95,0x6A,0x69,0x66,0x65,0x5A,0x59,0x56,0x55};
-const byte pre_sync[5]={0xff,0x00,0x33,0x55,0x53};
-const byte header_flags[16]={0x0f,0x0c,0x0d,0x0b,0x27,0x24,0x25,0x23,0x47,0x44,0x45,0x43,0x17,0x14,0x15,0x13};
+const uint8_t manc_enc[16]={0xAA,0xA9,0xA6,0xA5,0x9A,0x99,0x96,0x95,0x6A,0x69,0x66,0x65,0x5A,0x59,0x56,0x55};
+const uint8_t pre_sync[5]={0xff,0x00,0x33,0x55,0x53};
+const uint8_t header_flags[16]={0x0f,0x0c,0x0d,0x0b,0x27,0x24,0x25,0x23,0x47,0x44,0x45,0x43,0x17,0x14,0x15,0x13};
 
-byte out_flags;
-byte out_len;
+uint8_t out_flags;
+uint8_t out_len;
 
-byte in_header;
-byte in_flags;
+uint8_t in_header;
+uint8_t in_flags;
 
-byte unpack_flags(byte header)
+uint8_t unpack_flags(uint8_t header)
 {
   return header_flags[(header>>2)&0x0F];
 }
 
-byte pack_flags(byte flags)
+uint8_t pack_flags(uint8_t flags)
 {
-  for(byte n=0;n<16;n++)
+  for(uint8_t n=0;n<16;n++)
     if(header_flags[n]==flags)
       return n<<2;
   return 0xFF;
 }
 
 //in strictest terms volatile is only required when an interrupt (or similar) could affect the result of an operation accessing a memory location that may otherwise have been optimised out
-volatile CircularBuffer<volatile byte, volatile byte, 255> circ_buffer; //circular buffer (FIFO)
-volatile byte send_buffer[128];
+volatile CircularBuffer<volatile uint8_t, volatile uint8_t, 255> circ_buffer; //circular buffer (FIFO)
+volatile uint8_t send_buffer[128];
 
-byte pm=pmIdle;
-volatile byte sm=pmIdle;
+uint8_t pm=pmIdle;
+volatile uint8_t sm=pmIdle;
 
-byte bit_counter=0;
-byte byte_buffer=0;
+uint8_t bit_counter=0;
+uint8_t byte_buffer=0;
 
 boolean in_sync=false;
 uint16_t sync_buffer=0;
 boolean highnib=true;
 boolean last_bit;
-byte bm;
+uint8_t bm;
 
-byte sp=0;
-byte op=0;
-byte pp=0;
+uint8_t sp=0;
+uint8_t op=0;
+uint8_t pp=0;
 
-byte check=0;
-byte pkt_pos=0;
+uint8_t check=0;
+uint8_t pkt_pos=0;
 uint32_t devid;
-byte *pDev=(byte*)&devid;
+uint8_t *pDev=(uint8_t*)&devid;
 uint16_t cmd;
 char tmp[10];
-byte len;
-byte pos=3;
+uint8_t len;
+uint8_t pos=3;
 char param[10];
 
 // Interrupt to receive data and find_sync_word
 void sync_clk_in() {
-    byte new_bit=(PIND & GDO0_PD); //sync data
+    uint8_t new_bit=(PIND & GDO0_PD); //sync data
           
     //keep our buffer rolling even when we're in sync
     sync_buffer<<=1;
@@ -266,8 +266,10 @@ void setup() {
   //if OSCCAL is factory calibrated to 8MHz then just adjust by the ratio 
   //... not exactly guaranteed of course!
   //OSCCAL=(double)OSCCAL*1.0368;
-  OSCCAL=((uint32_t)OSCCAL*10368+5000)/10000;//Use integer maths here as makes smaller code than fp above
-  delay(200); //probably not a bad idea to wait until power etc. have stabilised a little
+  //OSCCAL=((uint32_t)OSCCAL*10368+5000)/10000;//Use integer maths here as makes smaller code than fp above
+  //OSCCAL=180;
+  //OSCCAL-=10;
+   delay(200); //probably not a bad idea to wait until power etc. have stabilised a little
 
   // Power up and configure the CC1101
   CCx.PowerOnStartUp();
@@ -278,14 +280,17 @@ void setup() {
   // Data is received at 38k4 (packet bytes only at 19k2 due to manchster encoding)
   // 115k2 provides enough speed to perform processing and write the received
   // bytes to serial
-  Serial.begin(115200);
+  //Serial.begin(115200);
+  Serial.begin(250000);
 
   Serial.println(F("# EvohomeWirelessFW v" VERSION_NO " Copyright (c) 2015 Hydrogenetic"));
   Serial.println(F("# Licensed under GPL-3.0+ <http://spdx.org/licenses/GPL-3.0+>"));
+  //sprintf(tmp,"OSCCAL=%u\n",OSCCAL);
+  //Serial.print(tmp);
 
   // Attach the find_sync_word interrupt function to the
   // falling edge of the serial clock connected to INT(1)
-  attachInterrupt(GDO2_INT, sync_clk_in, FALLING);
+  attachInterrupt(GDO2_INT, sync_clk_in, FALLING);   
 }
 
 // Main loop
@@ -307,7 +312,7 @@ void loop() {
   if (circ_buffer.remain())
   {
     bool mark;
-    byte in(circ_buffer.pop(mark));
+    uint8_t in(circ_buffer.pop(mark));
     
     if(mark)
     {
@@ -337,6 +342,10 @@ void loop() {
         else
           in_flags=unpack_flags(in_header);
         Serial.print("--- ");//dummy val in place of RSSI (095 low presumably -95? and 045 high)
+         
+        //sprintf(tmp,"(%02hhu)",in_flags);
+        //Serial.print(tmp);
+
         if(in_flags&enI)
           Serial.print(" I ");
         else if(in_flags&enRQ)
@@ -347,13 +356,13 @@ void loop() {
           Serial.print(" W ");
         else
         {
-          Serial.print(F("\x11Unknown header=0x"));
+          Serial.print(F("\x11Unknown header=0x")); 
           Serial.println(in,HEX);
           pm=pmIdle;
           return;
         }
         Serial.print("--- ");//parameter not supported... not been observed yet
-        pDev=(byte*)&devid+2; //platform specific
+        pDev=(uint8_t*)&devid+2; //platform specific
       }
       else if(pkt_pos<=pos)//ids, support 1 or 2 atm (1,2 or 3 ids are valid)
       {
@@ -364,24 +373,24 @@ void loop() {
             Serial.print("--:------ --:------ ");
           else    
             pos += 3;
-          sprintf(tmp,"%02hu:%06lu ",(uint8_t)(devid>>18)&0x3F,devid&0x3FFFF);
+          sprintf(tmp,"%02hhu:%06lu ",(uint8_t)(devid>>18)&0x3F,devid&0x3FFFF);
           Serial.print(tmp);
-          pDev=(byte*)&devid+2;//platform specific
+          pDev=(uint8_t*)&devid+2;//platform specific
         }
         else if(pkt_pos==6)
         {  
           if(!(in_flags&enDev1))
             Serial.print("--:------ "); 
-          sprintf(tmp,"%02hu:%06lu ",(uint8_t)(devid>>18)&0x3F,devid&0x3FFFF);
+          sprintf(tmp,"%02hhu:%06lu ",(uint8_t)(devid>>18)&0x3F,devid&0x3FFFF);
           Serial.print(tmp);
           if(!(in_flags&enDev2))
             Serial.print("--:------ "); 
-          pDev=(byte*)&devid+2;//platform specific
+          pDev=(uint8_t*)&devid+2;//platform specific
         }
       }
       else if(pkt_pos<=pos+2)//command
       {
-         if(pkt_pos == 4) //Skip the value
+        if(pkt_pos == 4) //Skip the value
           pos++;
         else if(pkt_pos==pos+1)
           cmd=in<<8;
@@ -395,7 +404,7 @@ void loop() {
       else if(pkt_pos==pos+3)//len
       {
         len=in;
-        sprintf(tmp,"%03hu ",len);
+        sprintf(tmp,"%03hhu ",len);
         Serial.print(tmp);
       }
       else if(pkt_pos<=pos+3+len)//payload
@@ -431,7 +440,7 @@ void loop() {
        }
        else if(out=='\n' && sm==pmSendHavePacket)//send on lf
        {
-         byte sc=0;
+         uint8_t sc=0;
          for(int n=0;n<op;n++)
            sc+=send_buffer[n];      
          send_buffer[op++]=-sc;
@@ -501,7 +510,7 @@ void loop() {
              }
              else if(sp==6)
              {
-               sscanf(param,"%03hu",&out_len);
+               sscanf(param,"%03hhu",&out_len);
                send_buffer[op++]=out_len;
              }
              
@@ -520,8 +529,8 @@ void loop() {
          if(pp==2)
          {
            param[pp]=0;
-           byte pay;
-           sscanf(param,"%02hX",&pay);
+           uint8_t pay;
+           sscanf(param,"%02hhX",&pay);
            send_buffer[op++]=pay;
            pp=0;
            if(op>(out_len+10) || op>127)
@@ -548,6 +557,7 @@ void loop() {
        attachInterrupt(GDO2_INT, sync_clk_out, RISING);
   }
 }
+
 
 
 
