@@ -1,5 +1,6 @@
 // EvohomeWirelessFW - RFBee firmware for evohome wireless communications
 // Copyright (c) 2015 Hydrogenetic
+// Modified 2017 by Fred Hoogduin and Evsdd 
 //
 // based on HoneyCommLite - Alternative RFBee firmware to communicate with
 //                 Evohome / Hometronix / CM67z and other Honeywell 868MHz based RF devices.

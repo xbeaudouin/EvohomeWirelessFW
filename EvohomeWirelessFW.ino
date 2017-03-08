@@ -1,5 +1,6 @@
 // EvohomeWirelessFW - RFBee firmware for evohome wireless communications
 // Copyright (c) 2015 Hydrogenetic
+// Modified 2017 by Fred Hoogduin and Evsdd
 //
 // based on HoneyCommLite - Alternative RFBee firmware to communicate with
 //                 Evohome / Hometronix / CM67z and other Honeywell 868MHz based RF devices.
@@ -32,7 +33,9 @@
 #include "CCxCfg.h"
 #include "Buffer.h"
 
-#define VERSION_NO "0.8"
+#define VERSION_NO "0.9"
+
+#define SYNC_ON_32BITS
 
 #define GDO0_INT 0 // INT0(PD2) wired to GDO0 on CC1101
 #define GDO2_INT 1 // INT1(PD3) wired to GDO2 on CC1101 (CCx_IOCFG2==0x0B Serial Clock. Synchronous to the data in synchronous serial mode. In RX mode, data is set up on the falling edge by CC1101 when GDOx_INV=0. In TX mode, data is sampled by CC1101 on the rising edge of the serial clock when GDOx_INV=0.)
@@ -42,6 +45,15 @@
 
 #define SYNC_WORD     (uint16_t)0x5595//This is the last 2 bytes of the preamble / sync words..on its own it can be confused with the end of block when the last bit of the checksum is 0 (the following 0x55 pattern is then converted to 0xFF)
 #define GW_ID         0x48DADA //This should ideally be unique for every device and some addresses may not be valid
+
+                  // using the knowledge that the sync bytes after the preamble are 0xFF 0x00 0x33 0x55 0x53,   
+                  // that the values are sent LSB first and start bit = 0 and stop bit = 1 we create the 32 bit sync value  
+#if !defined(SYNC_ON_32BITS)  
+#define SYNC_WORD    (uint16_t)0x5595//This is the last 2 bytes of the preamble / sync words..on its own it can be confused with the end of block when the last bit of the checksum is 0 (the following 0x55 pattern is then converted to 0xFF)  
+#else  
+#undef SYNC_WORD  
+#define SYNC_WORD    ((uint32_t)0x59955595) // The 32 bit version of the synchronisation sequence  
+#endif  
 
 enum progMode{
   pmIdle,
@@ -98,7 +110,12 @@ byte bit_counter=0;
 byte byte_buffer=0;
 
 boolean in_sync=false;
+
+#if !defined(SYNC_ON_32BITS) 
 uint16_t sync_buffer=0;
+#else  
+uint32_t sync_buffer=0;  
+#endif  
 boolean highnib=true;
 boolean last_bit;
 byte bm;
@@ -117,6 +134,8 @@ byte len;
 byte pos=3;
 char param[10];
 
+volatile char averageFrequencyOffset = 0; // use char for signed 8 bit type  
+ 
 // Interrupt to receive data and find_sync_word
 void sync_clk_in() {
     byte new_bit=(PIND & GDO0_PD); //sync data
@@ -124,7 +143,7 @@ void sync_clk_in() {
     //keep our buffer rolling even when we're in sync
     sync_buffer<<=1;
     if(new_bit)
-      sync_buffer++;
+      sync_buffer |= 1;
   
     if(!in_sync)
     {
@@ -163,7 +182,7 @@ void sync_clk_in() {
             {
               in_sync=false;
               circ_buffer.push(0x35,true);
-              if((sync_buffer&0x7F)==0x2B) //if this might be 0x35 breaking word remove it so it can't be confused with the sync_word
+              //if((sync_buffer&0x7F)==0x2B) //if this might be 0x35 breaking word remove it so it can't be confused with the sync_word
                 sync_buffer=0;
               return;
             }
@@ -406,7 +425,13 @@ void loop() {
       else if(pkt_pos==pos+4+len)//checksum
       {
         if(check==0)
+        {
           Serial.println();
+          char estimatedFrequencyOffset;  
+          CCx.Read(CCx_FREQEST, (byte*) &estimatedFrequencyOffset);  
+          averageFrequencyOffset = filter(averageFrequencyOffset, averageFrequencyOffset + estimatedFrequencyOffset);  
+          CCx.Write(CCx_FSCTRL0, averageFrequencyOffset);  
+        }
         else
           Serial.println(F("\x11*CHK*"));
         pm=pmIdle;
@@ -549,6 +574,13 @@ void loop() {
   }
 }
 
+char filter(char average, char sample)  
+{  
+  int tmp = average / 8;  
+  average -= tmp;  
+  average += sample / 8;  
+  return average;  
+ }  
 
 
 
