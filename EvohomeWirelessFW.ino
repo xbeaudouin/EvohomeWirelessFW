@@ -254,7 +254,9 @@ void sync_clk_out() {
       else
       {
         if(byte_buffer&0x01)
+          PORTB|=GDO0_PB;
         else
+          PORTB&=~GDO0_PB;
         byte_buffer>>=1;
       }
       bit_counter++;
