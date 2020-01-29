@@ -40,7 +40,15 @@
 #define GDO0_PD 4 // PD2(INT0) wired to GDO0 on CC1101 (CCx_IOCFG0==0x0C Serial Synchronous Data Output. Used for synchronous serial mode.)
 #define GDO2_PD 8 // PD3(INT1) wired to GDO2 on CC1101
 
-#define SYNC_WORD     (uint16_t)0x5595//This is the last 2 bytes of the preamble / sync words..on its own it can be confused with the end of block when the last bit of the checksum is 0 (the following 0x55 pattern is then converted to 0xFF)
+#define SYNC_ON_32BITS
+
+#if !defined(SYNC_ON_32BITS)  
+#define SYNC_WORD    (uint16_t)0x5595//This is the last 2 bytes of the preamble / sync words..on its own it can be confused with the end of block when the last bit of the checksum is 0 (the following 0x55 pattern is then converted to 0xFF)  
+#else  
+#undef SYNC_WORD  
+#define SYNC_WORD    ((uint32_t)0x59955595) // The 32 bit version of the synchronisation sequence  
+#endif
+
 #define GW_ID         0x48DADA //This should ideally be unique for every device and some addresses may not be valid
 
 enum progMode{
@@ -546,16 +554,3 @@ void loop() {
        attachInterrupt(GDO2_INT, sync_clk_out, RISING);
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
