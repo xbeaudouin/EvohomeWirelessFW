@@ -106,7 +106,11 @@ byte bit_counter=0;
 byte byte_buffer=0;
 
 boolean in_sync=false;
+#if !defined(SYNC_ON_32BITS) 
 uint16_t sync_buffer=0;
+#else  
+uint32_t sync_buffer=0;  
+#endif  
 boolean highnib=true;
 boolean last_bit;
 byte bm;
