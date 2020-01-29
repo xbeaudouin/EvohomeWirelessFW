@@ -1,4 +1,4 @@
-// EvohomeWirelessFW - RFBee firmware for evohome wireless communications
+// EvohomeWirelessFW - Micro branch firmware for evohome wireless communications
 // Copyright (c) 2015 Hydrogenetic
 //
 // based on HoneyCommLite - Alternative RFBee firmware to communicate with
@@ -23,7 +23,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-// Compile for RFbee using board: Arduino Pro or Pro Mini (3.3V, 8MHz) w/ATmega 168
+// Compile using In-Circuit Radino CC1101 board
 
 //some interesting notes on optimisation...
 //http://blog.kriegsman.org/2013/12/01/optimizing-10-lines-of-arduino-code-youre-wrong-so-am-i/
@@ -34,11 +34,9 @@
 
 #define VERSION_NO "0.8"
 
-#define GDO0_INT 0 // INT0(PD2) wired to GDO0 on CC1101
-#define GDO2_INT 1 // INT1(PD3) wired to GDO2 on CC1101 (CCx_IOCFG2==0x0B Serial Clock. Synchronous to the data in synchronous serial mode. In RX mode, data is set up on the falling edge by CC1101 when GDOx_INV=0. In TX mode, data is sampled by CC1101 on the rising edge of the serial clock when GDOx_INV=0.)
+#define GDO2_INT 4 // INT6(PE6) wired to GDO2 on CC1101 (CCx_IOCFG2==0x0B Serial Clock. Synchronous to the data in synchronous serial mode. In RX mode, data is set up on the falling edge by CC1101 when GDOx_INV=0. In TX mode, data is sampled by CC1101 on the rising edge of the serial clock when GDOx_INV=0.)
 
-#define GDO0_PD 4 // PD2(INT0) wired to GDO0 on CC1101 (CCx_IOCFG0==0x0C Serial Synchronous Data Output. Used for synchronous serial mode.)
-#define GDO2_PD 8 // PD3(INT1) wired to GDO2 on CC1101
+#define GDO0_PB 32 // PB5 wired to GDO0 on CC1101 (CCx_IOCFG0==0x0C Serial Synchronous Data Output. Used for synchronous serial mode.)
 
 #define SYNC_ON_32BITS
 
@@ -131,7 +129,7 @@ char param[10];
 
 // Interrupt to receive data and find_sync_word
 void sync_clk_in() {
-    byte new_bit=(PIND & GDO0_PD); //sync data
+    byte new_bit=(PINB & GDO0_PB); //sync data
           
     //keep our buffer rolling even when we're in sync
     sync_buffer<<=1;
@@ -215,7 +213,7 @@ void sync_clk_out() {
     {
       if(!bit_counter)
       {
-        PORTD&=~GDO0_PD;
+        PORTB&=~GDO0_PB;
         if(out_flags<5)
         {
           byte_buffer=0x55;
@@ -256,29 +254,20 @@ void sync_clk_out() {
       else
       {
         if(byte_buffer&0x01)
-          PORTD|=GDO0_PD;
         else
-          PORTD&=~GDO0_PD;
         byte_buffer>>=1;
       }
       bit_counter++;
     }
     else
     {
-      PORTD|=GDO0_PD;
+      PORTB|=GDO0_PB;
       bit_counter=0;
     }
 }
 
 // Setup
 void setup() {
-  //from http://forum.arduino.cc/index.php?topic=54623.0
-  //an ideal freq of 8.294400 is required for 0% error @ 115200
-  //this will cause time delays to be off by a factor of approx 0.964 per sec
-  //if OSCCAL is factory calibrated to 8MHz then just adjust by the ratio 
-  //... not exactly guaranteed of course!
-  //OSCCAL=(double)OSCCAL*1.0368;
-  OSCCAL=((uint32_t)OSCCAL*10368+5000)/10000;//Use integer maths here as makes smaller code than fp above
   delay(200); //probably not a bad idea to wait until power etc. have stabilised a little
 
   // Power up and configure the CC1101
