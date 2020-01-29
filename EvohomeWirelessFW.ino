@@ -381,9 +381,7 @@ void loop() {
       }
       else if(pkt_pos<=pos+2)//command
       {
-         if(pkt_pos == 4) //Skip the value
-          pos++;
-        else if(pkt_pos==pos+1)
+        if(pkt_pos==pos+1)
           cmd=in<<8;
         else if(pkt_pos==pos+2)
         {
