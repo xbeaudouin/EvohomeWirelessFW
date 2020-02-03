@@ -299,7 +299,7 @@ void loop() {
     in_sync=false;
     bit_counter=0;
     circ_buffer.push(0x35,true);
-    pinMode(2,INPUT);
+    pinMode(9,INPUT);  //PB5 = Pin 9
     while(((CCx.Write(CCx_SRX,0)>>4)&7)!=1); 
     attachInterrupt(GDO2_INT, sync_clk_in, FALLING);
     pp=0;
@@ -538,7 +538,7 @@ void loop() {
        detachInterrupt(GDO2_INT);
        while(((CCx.Write(CCx_SIDLE,0)>>4)&7)!=0);
        while(((CCx.Write(CCx_STX,0)>>4)&7)!=2);//will calibrate when going to tx
-       pinMode(2,OUTPUT);
+       pinMode(9,OUTPUT); //PB5 = Pin 9
        sm=pmSendActive;
        highnib=true;
        bit_counter=0;
