@@ -34,11 +34,11 @@
 
 #define VERSION_NO "0.8"
 
-#define GDO0_INT 0 // INT0(PD2) wired to GDO0 on CC1101
-#define GDO2_INT 1 // INT1(PD3) wired to GDO2 on CC1101 (CCx_IOCFG2==0x0B Serial Clock. Synchronous to the data in synchronous serial mode. In RX mode, data is set up on the falling edge by CC1101 when GDOx_INV=0. In TX mode, data is sampled by CC1101 on the rising edge of the serial clock when GDOx_INV=0.)
+#define GDO0_INT 1 // INT0(PD2) wired to GDO0 on CC1101
+#define GDO2_INT 0 // INT1(PD3) wired to GDO2 on CC1101 (CCx_IOCFG2==0x0B Serial Clock. Synchronous to the data in synchronous serial mode. In RX mode, data is set up on the falling edge by CC1101 when GDOx_INV=0. In TX mode, data is sampled by CC1101 on the rising edge of the serial clock when GDOx_INV=0.)
 
-#define GDO0_PD 4 // PD2(INT0) wired to GDO0 on CC1101 (CCx_IOCFG0==0x0C Serial Synchronous Data Output. Used for synchronous serial mode.)
-#define GDO2_PD 8 // PD3(INT1) wired to GDO2 on CC1101
+#define GDO0_PD 8 // PD2(INT0) wired to GDO0 on CC1101 (CCx_IOCFG0==0x0C Serial Synchronous Data Output. Used for synchronous serial mode.)
+#define GDO2_PD 4 // PD3(INT1) wired to GDO2 on CC1101
 
 #define SYNC_ON_32BITS
 
@@ -140,7 +140,7 @@ void sync_clk_in() {
   
     if(!in_sync)
     {
-      if(sync_buffer==SYNC_WORD)
+      if((sync_buffer&0x7FFFFFFF)==SYNC_WORD) //fix for first RX following TX which requires 31bit syncword
       {
         circ_buffer.push(0x53,true);
         
@@ -272,13 +272,6 @@ void sync_clk_out() {
 
 // Setup
 void setup() {
-  //from http://forum.arduino.cc/index.php?topic=54623.0
-  //an ideal freq of 8.294400 is required for 0% error @ 115200
-  //this will cause time delays to be off by a factor of approx 0.964 per sec
-  //if OSCCAL is factory calibrated to 8MHz then just adjust by the ratio 
-  //... not exactly guaranteed of course!
-  //OSCCAL=(double)OSCCAL*1.0368;
-  OSCCAL=((uint32_t)OSCCAL*10368+5000)/10000;//Use integer maths here as makes smaller code than fp above
   delay(200); //probably not a bad idea to wait until power etc. have stabilised a little
 
   // Power up and configure the CC1101
@@ -308,7 +301,7 @@ void loop() {
     in_sync=false;
     bit_counter=0;
     circ_buffer.push(0x35,true);
-    pinMode(2,INPUT);
+    pinMode(3,INPUT);
     while(((CCx.Write(CCx_SRX,0)>>4)&7)!=1); 
     attachInterrupt(GDO2_INT, sync_clk_in, FALLING);
     pp=0;
@@ -547,7 +540,7 @@ void loop() {
        detachInterrupt(GDO2_INT);
        while(((CCx.Write(CCx_SIDLE,0)>>4)&7)!=0);
        while(((CCx.Write(CCx_STX,0)>>4)&7)!=2);//will calibrate when going to tx
-       pinMode(2,OUTPUT);
+       pinMode(3,OUTPUT);
        sm=pmSendActive;
        highnib=true;
        bit_counter=0;
