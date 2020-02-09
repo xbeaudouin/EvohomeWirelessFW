@@ -79,7 +79,7 @@ static const byte CCx_registerSettings[CCX_NR_OF_CONFIGS][CCX_NR_OF_REGISTERS] P
         0x2e,//CCx_IOCFG1
         0x0c,//CCx_IOCFG0 (Serial Synchronous Data Output. Used for synchronous serial mode.)
         0xFF,//CCx_SYNC1
-        0x00,//CCx_SYNC0
+        0x80,//CCx_SYNC0
         0x20,//CCx_PKTCTRL1 (Preamble quality threshold)
         0x12,//CCx_PKTCTRL0 (Synchronous serial mode, Data in on GDO0 and data out on either of the GDOx pins)
         0x06,//CCx_FSCTRL1
@@ -120,6 +120,3 @@ static const byte CCx_paTable[CCX_NR_OF_CONFIGS][CCx_PA_TABLESIZE] PROGMEM ={
 };
 
 #endif
-
-
-

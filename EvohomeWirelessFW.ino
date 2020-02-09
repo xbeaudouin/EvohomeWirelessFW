@@ -71,7 +71,7 @@ enum enflags{
 };
 
 const byte manc_enc[16]={0xAA,0xA9,0xA6,0xA5,0x9A,0x99,0x96,0x95,0x6A,0x69,0x66,0x65,0x5A,0x59,0x56,0x55};
-const byte pre_sync[5]={0xff,0x00,0x33,0x55,0x53};
+const byte pre_sync[3]={0x33,0x55,0x53};
 const byte header_flags[16]={0x0f,0x0c,0x0d,0x0b,0x27,0x24,0x25,0x23,0x47,0x44,0x45,0x43,0x17,0x14,0x15,0x13};
 
 byte out_flags;
@@ -113,6 +113,7 @@ boolean highnib=true;
 boolean last_bit;
 byte bm;
 
+boolean send_start=false;
 byte sp=0;
 byte op=0;
 byte pp=0;
@@ -209,17 +210,17 @@ void sync_clk_in() {
 void sync_clk_out() {
     if(sm!=pmSendActive)
       return;
-    if(bit_counter<9)
+    if(send_start)
+    {
+      PORTB|=GDO0_PB;
+      send_start=false;      
+    }
+    else if(bit_counter<9)
     {
       if(!bit_counter)
       {
         PORTB&=~GDO0_PB;
-        if(out_flags<5)
-        {
-          byte_buffer=0x55;
-          out_flags++;
-        }
-        else if(pp<5)
+        if(pp<3)
           byte_buffer=pre_sync[pp++];
         else
         {
@@ -302,6 +303,7 @@ void loop() {
     pinMode(9,INPUT);  //PB5 = Pin 9
     while(((CCx.Write(CCx_SRX,0)>>4)&7)!=1); 
     attachInterrupt(GDO2_INT, sync_clk_in, FALLING);
+    send_start=true;
     pp=0;
     op=0;
     sp=0;
@@ -535,17 +537,18 @@ void loop() {
   }
   else if(sm==pmSendReady && pm!=pmNewPacket)
   {
-       detachInterrupt(GDO2_INT);
-       while(((CCx.Write(CCx_SIDLE,0)>>4)&7)!=0);
-       while(((CCx.Write(CCx_STX,0)>>4)&7)!=2);//will calibrate when going to tx
+       detachInterrupt(GDO2_INT);       
        pinMode(9,OUTPUT); //PB5 = Pin 9
        sm=pmSendActive;
        highnib=true;
        bit_counter=0;
+       send_start=true;
        sp=0;
        pp=0;
        out_flags=0;//reuse for preamble counter
        circ_buffer.push(0x53,true); //don't push anything while interrupt is running
+       while(((CCx.Write(CCx_SIDLE,0)>>4)&7)!=0);
+       while(((CCx.Write(CCx_STX,0)>>4)&7)!=2);//will calibrate when going to tx
        attachInterrupt(GDO2_INT, sync_clk_out, RISING);
   }
 }
