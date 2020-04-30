@@ -23,6 +23,9 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 // Compile for RFbee using board: Arduino Pro or Pro Mini (3.3V, 8MHz) w/ATmega 168
+//
+// For RFBee >= 1.2 : Ardiuno Pro or Pro Mini w ATmega328 (3,3V, 8MHz).
+// RFBee v1.2 and UartSBee v5.0 Seems to work at 155200 at least on #FreeBSD
 
 This should work with Domoticz (http://www.domoticz.com/wiki/Evohome) to control evohome or you can control it directly via the serial interface if you use the correct protocol. This sketch can also serve as template for creation of an evohome compatible wireless device. 
 
