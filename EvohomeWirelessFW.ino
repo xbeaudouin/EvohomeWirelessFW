@@ -293,8 +293,8 @@ void setup() {
   // bytes to serial
   Serial.begin(115200);
 
-  Serial.println(F("# EvohomeWirelessFW v" VERSION_NO " Copyright (c) 2015 Hydrogenetic"));
-  Serial.println(F("# Licensed under GPL-3.0+ <http://spdx.org/licenses/GPL-3.0+>"));
+  //Serial.println(F("# EvohomeWirelessFW v" VERSION_NO " Copyright (c) 2015 Hydrogenetic"));
+  //Serial.println(F("# Licensed under GPL-3.0+ <http://spdx.org/licenses/GPL-3.0+>"));
 
   // Attach the find_sync_word interrupt function to the
   // falling edge of the serial clock connected to INT(1)
